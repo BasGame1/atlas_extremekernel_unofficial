@@ -4,7 +4,7 @@ abort()
 {
     cd -
     echo "-----------------------------------------------"
-    echo "Kernel compilation failed! Exiting..."
+    echo "Kernel compilation failed! Exiting... :( "
     echo "-----------------------------------------------"
     exit -1
 }
@@ -73,13 +73,6 @@ if [ ! -f "$CLANG_DIR/bin/clang-18" ]; then
     popd > /dev/null
 fi
 
-# Apply KSU patch for FBE support
-# Else it'll lose allowlist on reboot
-# Source patch: https://github.com/Unb0rn/android_kernel_samsung_exynos9820/commit/e424dac6ce3f99e128aaabb0711d69adf4079c77
-pushd ./KernelSU > /dev/null
-patch -p1 -t -N  < ../build/KSU.patch > /dev/null
-popd > /dev/null
-
 if [[ "$CCACHE_OPTION" == "y" ]]; then
     CCACHE=ccache
 fi
@@ -94,7 +87,7 @@ O=out
 "
 
 # Define specific variables
-KERNEL_DEFCONFIG=extreme_"$MODEL"_defconfig
+KERNEL_DEFCONFIG=exynos850-"$MODEL"nsxx_defconfig
 case $MODEL in
 x1slte)
     BOARD=SRPSJ28B018KU
@@ -167,7 +160,7 @@ echo "-----------------------------------------------"
 echo "Building kernel using "$KERNEL_DEFCONFIG""
 echo "Generating configuration file..."
 echo "-----------------------------------------------"
-make ${MAKE_ARGS} -j$CORES $KERNEL_DEFCONFIG extreme.config $RECOVERY $KSU || abort
+make ${MAKE_ARGS} -j$CORES $KERNEL_DEFCONFIG $RECOVERY $KSU || abort
 
 echo "Building kernel..."
 echo "-----------------------------------------------"
@@ -182,7 +175,7 @@ RAMDISK_OFFSET=0x01000000
 SECOND_OFFSET=0xF0000000
 TAGS_OFFSET=0x00000100
 BASE=0x10000000
-CMDLINE='androidboot.hardware=exynos990 loop.max_part=7'
+CMDLINE='androidboot.hardware=exynos850 loop.max_part=7'
 HASHTYPE=sha1
 HEADER_VERSION=2
 OS_PATCH_LEVEL=2024-05
@@ -198,7 +191,7 @@ cp out/arch/arm64/boot/Image build/out/$MODEL
 # Build dtb
 echo "Building common exynos9830 Device Tree Blob Image..."
 echo "-----------------------------------------------"
-./toolchain/mkdtimg cfg_create build/out/$MODEL/dtb.img build/dtconfigs/exynos9830.cfg -d out/arch/arm64/boot/dts/exynos
+./toolchain/mkdtimg cfg_create build/out/$MODEL/dtb.img build/dtconfigs/exynos850.cfg -d out/arch/arm64/boot/dts/exynos
 
 # Build dtbo
 echo "Building Device Tree Blob Output Image for "$MODEL"..."
@@ -223,6 +216,11 @@ if [ -z "$RECOVERY" ]; then
     --ramdisk $RAMDISK --ramdisk_offset $RAMDISK_OFFSET \
     --second_offset $SECOND_OFFSET --tags_offset $TAGS_OFFSET -o $OUTPUT_FILE || abort
 
+# Rename boot.img files 
+cp out/arch/arm64/boot/Image out/arch/arm64/boot/kernel
+cp out/arch/arm64/boot/dtb.img out/arch/arm64/boot/dtb
+cp out/arch/arm64/boot/ramdisk.cpio.gz out/arch/arm64/boot/ramdisk
+
     # Build zip
     echo "Building zip..."
     echo "-----------------------------------------------"
@@ -246,4 +244,4 @@ if [ -z "$RECOVERY" ]; then
 fi
 
 popd > /dev/null
-echo "Build finished successfully!"
+echo "Build finished successfully! :) "
